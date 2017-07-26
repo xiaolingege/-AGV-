@@ -1,0 +1,21 @@
+#ifndef _LED_CTRL_H
+#define _LED_CTRL_H
+#include "stm32f4xx.h"
+#include "led.h"
+#include "type.h"
+#include "sys.h"
+
+#define POWER_0 PFout(0)
+#define POWER_25 PFout(1)
+#define POWER_50 PFout(2)
+#define POWER_75 PFout(3)
+#define POWER_100 PFout(4)
+
+#define ERR_LED_PUSH PFout(5)
+
+void errStatusShow(LED_SHOW_TYPE status);
+
+void batteryLevelShow(BATTERY_LEVEL_TYPE battery);
+#endif // !_LED_CTRL_H
+
+
