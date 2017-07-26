@@ -5,6 +5,11 @@
 #include "type.h"
 #include "ledCTRL.h"
 #include "flash.h"
+#include "dma.h"
+
+#define SEND_BUF_SIZE 10
+u8 SendBuff[SEND_BUF_SIZE] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0 } ;
+
 //任务优先级
 #define START_TASK_PRIO		1
 //任务堆栈大小	
@@ -43,11 +48,11 @@ void float_task(void *pvParameters);
 
 int main(void)
 { 
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);//设置系统中断优先级分组4
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组4
 	delay_init(168);		//初始化延时函数
 	uart_init(115200);     	//初始化串口
 	batteryLevelLedInit();
-	
+	MYDMA_Config(DMA2_Stream7, DMA_Channel_4, (u32)&USART1->DR, (u32)SendBuff, SEND_BUF_SIZE);
 	//创建开始任务
     xTaskCreate((TaskFunction_t )start_task,            //任务函数
                 (const char*    )"start_task",          //任务名称
@@ -90,10 +95,17 @@ void start_task(void *pvParameters)
 //LED0任务函数 
 void led0_task(void *pvParameters)
 {
+    USART_DMACmd(USART1,USART_DMAReq_Tx,ENABLE);
     while(1)
     {
-		errStatusShow(Lost_3288);
+		MYDMA_Enable(DMA2_Stream7, SEND_BUF_SIZE);
+        errStatusShow(Lost_3288);
 		batteryLevelShow(Full);
+		while (DMA_GetFlagStatus(DMA2_Stream7, DMA_FLAG_TCIF7) == RESET)
+        {
+            vTaskDelay(10);
+        }//等待DMA2_Steam7传输完成
+		DMA_ClearFlag(DMA2_Stream7, DMA_FLAG_TCIF7);//清除DMA2_Steam7传输完成标志
 		vTaskDelay(1000);
     }
 }   
@@ -121,7 +133,7 @@ void float_task(void *pvParameters)
 	while(1)
 	{
 		float_num+=0.01f;
-		printf("float_num的值为: %.4f\r\n",float_num);
+	//	printf("float_num的值为: %.4f\r\n",float_num);
         vTaskDelay(1000);
 	}
 }
