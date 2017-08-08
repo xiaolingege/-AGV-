@@ -151,7 +151,7 @@ void TIM3_Int_Init(u16 arr, u16 psc)
 	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseInitStructure);//初始化TIM3
 
 	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE); //允许定时器3更新中断
-	TIM_Cmd(TIM3, ENABLE); //使能定时器3
+	TIM_Cmd(TIM3, DISABLE); //使能定时器3
 
 	NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn; //定时器3中断
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x01; //抢占优先级1
@@ -160,6 +160,12 @@ void TIM3_Int_Init(u16 arr, u16 psc)
 	NVIC_Init(&NVIC_InitStructure);
 
 }
+
+static struct _FLIP_ARGS
+{
+	u32 FlipCount;
+	u32 FlipFrequency;
+}FlipArgs;
 
 //定时器3中断服务函数
 void TIM3_IRQHandler(void)
@@ -170,7 +176,7 @@ void TIM3_IRQHandler(void)
         if(!countTimer3)
         {
             LED1 = !LED1;//DS1翻转
-            countTimer3 = _FLIP_COUNT;
+            countTimer3 = FlipArgs.FlipCount;
         }
         else
         {
@@ -178,4 +184,19 @@ void TIM3_IRQHandler(void)
         }
 	}
 	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);  //清除中断标志位
+}
+
+extern void setFlipTimer(u32 frequency)
+{
+	if (frequency == 0)
+	{
+		TIM_Cmd(TIM3, DISABLE);
+		return;
+	}
+	else
+	{
+		FlipArgs.FlipFrequency = frequency;
+		FlipArgs.FlipCount = 500000l / FlipArgs.FlipFrequency;
+        TIM_Cmd(TIM3, ENABLE);
+	}
 }

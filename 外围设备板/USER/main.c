@@ -9,58 +9,12 @@
 #include "can.h"
 #include "timer.h"
 #include "adc.h"
+#include "taskManager.h"
 
 #define _ENABLE_LIDAR 0
 
 #define SEND_BUF_SIZE 10
 u8 SendBuff[SEND_BUF_SIZE] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 };
-
-//任务优先级
-#define START_TASK_PRIO		1
-//任务堆栈大小	
-#define START_STK_SIZE 		128  
-//任务句柄
-TaskHandle_t StartTask_Handler;
-//任务函数
-void start_task(void *pvParameters);
-
-//任务优先级
-#define _INDICATOR_MANAGE_TASK_PRIO		2
-//任务堆栈大小	
-#define _INDICATOR_MANAGE_TASK_STK 		50  
-//任务句柄
-TaskHandle_t IndicatorTaskHandle;
-//任务函数
-void indicatorManageTask(void *pvParameters);
-
-//任务优先级
-#define LED1_TASK_PRIO		3
-//任务堆栈大小	
-#define LED1_STK_SIZE 		50  
-//任务句柄
-TaskHandle_t LED1Task_Handler;
-//任务函数
-void led1_task(void *pvParameters);
-
-//任务优先级
-#define FLOAT_TASK_PRIO		4
-//任务堆栈大小	
-#define FLOAT_STK_SIZE 		128
-//任务句柄
-TaskHandle_t FLOATTask_Handler;
-//任务函数
-void float_task(void *pvParameters);
-
-
-#define _LIDAR_TASK_PRIO	5
-#define _LIDAR_TASK_STK		512
-TaskHandle_t LidarTaskHandle;
-void lidarTask(void *pvParameters);
-
-#define _CONFIG_ARGS_TASK_PRIO 6
-#define _CONFIG_ARGS_TASK_STK 128
-TaskHandle_t ConfigArgsTaskHandle;
-void configArgTask(void *pvParameters);
 
 xQueueHandle ConfigArgsQueue;
 int main(void)
@@ -142,13 +96,10 @@ void indicatorManageTask(void *pvParameters)
 //LED1任务函数
 void led1_task(void *pvParameters)
 {
-	while (1)
-	{
-		//LED1 = 1;
-		vTaskDelay(200);
-	//	LED1 = 0;
-		vTaskDelay(800);
-	}
+	taskENTER_CRITICAL();
+	setFlipTimer(10);
+	taskEXIT_CRITICAL();
+	vTaskDelete(LED1Task_Handler);
 }
 
 //浮点测试任务
@@ -157,6 +108,7 @@ void float_task(void *pvParameters)
 	static float float_num = 0.00;
 	while (1)
 	{
+        LED0 = !LED0;
 		float_num += 0.01f;
 		vTaskDelay(1000);
 	}
@@ -174,7 +126,6 @@ void lidarTask(void *pvParameters)
 			vTaskDelay(2);
 		}//等待DMA2_Steam7传输完成
 		DMA_ClearFlag(DMA2_Stream7, DMA_FLAG_TCIF7);//清除DMA2_Steam7传输完成标志
-
 		vTaskDelay(100);
 	}
 }

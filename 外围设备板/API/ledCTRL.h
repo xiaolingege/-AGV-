@@ -4,6 +4,10 @@
 #include "led.h"
 #include "type.h"
 #include "sys.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "queue.h"
 
 #define POWER_0 PFout(0)
 #define POWER_25 PFout(1)

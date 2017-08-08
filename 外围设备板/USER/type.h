@@ -2,10 +2,6 @@
 #define _TYPE_H
 
 #include "stm32f4xx.h"
-#include "FreeRTOS.h"
-#include "task.h"
-#include "timers.h"
-#include "queue.h"
 
 
 typedef enum _LED_SHOW_TYPE
@@ -21,11 +17,11 @@ typedef enum _LED_SHOW_TYPE
 
 typedef enum _BATTERY_LEVEL_TYPE
 {
-	empty = 0,
-	Low_Level = 1,
-	Half_Level = 2,
-	High_Level = 3,
-	Full = 4
+	empty = 0,//电池电量低于25，判断为警报灯电量
+	Low_Level = 1,//电池电量剩余25左右
+	Half_Level = 2,//电池电量剩余50
+	High_Level = 3,//电池电量剩余75
+	Full = 4//满点
 }BATTERY_LEVEL_TYPE;
 
 #endif // !_TYPE_H
