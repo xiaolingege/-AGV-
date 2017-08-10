@@ -5,7 +5,7 @@
 //PWM输出初始化
 //arr：自动重装值
 //psc：时钟预分频数
-void TIM14_PWM_Init(u32 arr, u32 psc)
+void TIM4_PWM_Init(u32 arr, u32 psc)
 {
 	//此部分需手动修改IO口设置
 
@@ -13,40 +13,64 @@ void TIM14_PWM_Init(u32 arr, u32 psc)
 	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 	TIM_OCInitTypeDef  TIM_OCInitStructure;
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);  	//TIM14时钟使能    
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOF, ENABLE); 	//使能PORTF时钟	
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);  	//TIM14时钟使能    
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE); 	//使能PORTF时钟	
 
-	GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_TIM14); //GPIOF9复用位定时器14
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource12, GPIO_AF_TIM4);
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource13, GPIO_AF_TIM4);
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource14, GPIO_AF_TIM4);
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource15, GPIO_AF_TIM4);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7; //GPIOA9 
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15; //GPIOA9 
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;//复用功能
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;	//速度100MHz
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽复用输出
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //上拉
-	GPIO_Init(GPIOA, &GPIO_InitStructure); //初始化PF9
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
 
 	TIM_TimeBaseStructure.TIM_Prescaler = psc;  //定时器分频
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up; //向上计数模式
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_CenterAligned3;
 	TIM_TimeBaseStructure.TIM_Period = arr;   //自动重装载值
 	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-
-	TIM_TimeBaseInit(TIM14, &TIM_TimeBaseStructure);
+	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
 
 	//初始化TIM14 Channel1 PWM模式	 
-	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1; //选择定时器模式:TIM脉冲宽度调制模式2
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2; //选择定时器模式:TIM脉冲宽度调制模式2
 	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable; //比较输出使能
 	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //输出极性:TIM输出比较极性高
 	TIM_OCInitStructure.TIM_Pulse = 0;
-	TIM_OC1Init(TIM14, &TIM_OCInitStructure);  //根据T指定的参数初始化外设TIM3 OC2
+	TIM_OC1Init(TIM4, &TIM_OCInitStructure);
+	TIM_OC1PreloadConfig(TIM4, TIM_OCPreload_Enable);  //使能TIM3在CCR1上的预装载寄存器
 
-	TIM_OC2PreloadConfig(TIM14, TIM_OCPreload_Enable);  //使能TIM3在CCR2上的预装载寄存器
+		//初始化TIM14 Channel2 PWM模式	 
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2; //选择定时器模式:TIM脉冲宽度调制模式2
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable; //比较输出使能
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low; //输出极性:TIM输出比较极性高
+	TIM_OCInitStructure.TIM_Pulse = 0;
+	TIM_OC2Init(TIM4, &TIM_OCInitStructure);
+	TIM_OC2PreloadConfig(TIM4, TIM_OCPreload_Enable);  //使能TIM3在CCR2上的预装载寄存器
 
-	TIM_ARRPreloadConfig(TIM14, ENABLE);
 
-	TIM_Cmd(TIM14, ENABLE);  //使能TIM14		
-	TIM_SetCompare1(TIM14, 250);
+	TIM_ARRPreloadConfig(TIM4, ENABLE);
+	TIM_Cmd(TIM4, ENABLE);  //使能TIM14		
+	TIM_SetCompare1(TIM4, 75);
+	TIM_SetCompare2(TIM4, 25);
 }
+void changeStrobe(u32 frequency, u32 exposure, u32 shoot)
+{
+	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
 
+	u32 arr = 500000 / frequency;
+	TIM_Cmd(TIM4, DISABLE);
+	TIM_TimeBaseStructure.TIM_Prescaler = 84 - 1;  //定时器分频
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_CenterAligned3; 
+	TIM_TimeBaseStructure.TIM_Period = arr - 1;   //自动重装载值
+	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+	TIM_Cmd(TIM4, ENABLE);
+	TIM_SetCompare1(TIM4, exposure / 2);
+	TIM_SetCompare2(TIM4, (exposure - 2 * shoot) / 2);
+}
 
 //定时器5通道1输入捕获配置
 //arr：自动重装值(TIM2,TIM5是32位的!!)
@@ -170,18 +194,18 @@ static struct _FLIP_ARGS
 //定时器3中断服务函数
 void TIM3_IRQHandler(void)
 {
-    static u32 countTimer3 = 0;
+	static u32 countTimer3 = 0;
 	if (TIM_GetITStatus(TIM3, TIM_IT_Update) == SET) //溢出中断
 	{
-        if(!countTimer3)
-        {
-            LED1 = !LED1;//DS1翻转
-            countTimer3 = FlipArgs.FlipCount;
-        }
-        else
-        {
-            countTimer3 --;
-        }
+		if (!countTimer3)
+		{
+			LED1 = !LED1;//DS1翻转
+			countTimer3 = FlipArgs.FlipCount;
+		}
+		else
+		{
+			countTimer3--;
+		}
 	}
 	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);  //清除中断标志位
 }
@@ -197,6 +221,6 @@ extern void setFlipTimer(u32 frequency)
 	{
 		FlipArgs.FlipFrequency = frequency;
 		FlipArgs.FlipCount = 500000l / FlipArgs.FlipFrequency;
-        TIM_Cmd(TIM3, ENABLE);
+		TIM_Cmd(TIM3, ENABLE);
 	}
 }

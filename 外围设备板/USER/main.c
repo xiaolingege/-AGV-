@@ -25,8 +25,7 @@ int main(void)
 	batteryLevelLedInit();
     CAN1_Configuration();
 	MYDMA_Config(DMA2_Stream7, DMA_Channel_4, (u32)&USART1->DR, (u32)SendBuff, SEND_BUF_SIZE);
-	TIM14_PWM_Init(500 - 1, 84 - 1);       	//84M/84=1Mhz的计数频率计数到500,PWM频率为1M/500=2Khz     
-	TIM5CH1Cap_Init(0XFFFFFFFF, 84 - 1); //以1Mhz的频率计数 
+	TIM4_PWM_Init(5000 - 1, 84 - 1);       	//84M/84=1Mhz的计数频率计数到5000,PWM频率为1M/5000=200hz     
     TIM3_Int_Init(84 - 1, 0); //TIM3以1MHZ产生中断
 	ADC_Configuration();
 	//创建开始任务
@@ -108,6 +107,7 @@ void float_task(void *pvParameters)
 	static float float_num = 0.00;
 	while (1)
 	{
+		changeStrobe(200, 150, 50);
         LED0 = !LED0;
 		float_num += 0.01f;
 		vTaskDelay(1000);
