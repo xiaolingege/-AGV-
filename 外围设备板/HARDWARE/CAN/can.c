@@ -79,9 +79,9 @@ const unsigned int CAN_baud_table[CAN_BAUD_NUM][5] =
 	{ 800, CAN_SJW_1tq, CAN_BS1_8tq, CAN_BS2_3tq,14 },			//800K 未通
 	{ 1000,CAN_SJW_1tq,	CAN_BS1_15tq,CAN_BS2_5tq,2 },			//1000K	ok
 };
-void CAN1_Configuration(void)
+void can1Config(void)
 {
-GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure;
 	CAN_InitTypeDef        CAN_InitStructure;
 	CAN_FilterInitTypeDef  CAN_FilterInitStructure;
 	NVIC_InitTypeDef  NVIC_InitStructure;
@@ -134,8 +134,8 @@ GPIO_InitTypeDef GPIO_InitStructure;
 
 	/* Enable FIFO 0 message pending Interrupt */
 	CAN_ITConfig(CAN1, CAN_IT_FMP0, ENABLE);
-    
-    CAN_ITConfig(CAN1, CAN_IT_FMP0, ENABLE);//FIFO0消息挂号中断允许.		    
+
+	CAN_ITConfig(CAN1, CAN_IT_FMP0, ENABLE);//FIFO0消息挂号中断允许.		    
 	NVIC_InitStructure.NVIC_IRQChannel = CAN1_RX0_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;     // 主优先级为1
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;            // 次优先级为0

@@ -14,6 +14,7 @@ void errStatusShow(LED_SHOW_TYPE status)
 
 void batteryLevelShow(BATTERY_LEVEL_TYPE battery)
 {
+
 	switch (battery)
 	{
 	case empty:
@@ -55,6 +56,19 @@ void batteryLevelShow(BATTERY_LEVEL_TYPE battery)
 		break;
 	}
 
+}
+
+//************************************
+// FunctionName:  tapeLightShow
+// Returns:   void
+// Qualifier: 通过给定灯条颜色参数输出到IO口
+// Parameter: TAPE_LIGHT_TYPE status
+//************************************
+void tapeLightShow(TAPE_LIGHT_TYPE colour)
+{
+	TAPE_R = (colour & 0x01);
+	TAPE_G = ((colour & 0x02) >> 1);
+	TAPE_B = ((colour & 0x04) >> 2);
 }
 
 

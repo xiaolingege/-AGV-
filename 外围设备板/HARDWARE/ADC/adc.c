@@ -2,7 +2,7 @@
 #define ADC_CHANNLE_NUM					16
 uint16_t ADC_RCVTab[ADC_CHANNLE_NUM];   //自己添加
 
-void ADC_Configuration(void)
+void adcConfig(void)
 {
 	ADC_InitTypeDef       ADC_InitStructure;
 	ADC_CommonInitTypeDef ADC_CommonInitStructure;
@@ -25,10 +25,8 @@ void ADC_Configuration(void)
 	DMA_InitStructure.DMA_BufferSize = 16;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
-
 	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
 	DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
@@ -81,4 +79,30 @@ void ADC_Configuration(void)
 
 	/* Start ADC1 Software Conversion */
 	ADC_SoftwareStartConv(ADC1);
+}
+
+
+//************************************
+// FunctionName:  checkADCBufs
+// Returns:   void
+// Qualifier:读取ADC缓存区数据，对数据进行滤波处理并返回有效值
+// Parameter: void
+//************************************
+ADC_VALUE_STRUCT_TYPE checkADCBufs(void)
+{
+	ADC_VALUE_STRUCT_TYPE value;
+	float batteryPower = 0;
+	float batteryCharger = 0;
+	float infrared = 0;
+	u8 count = 0;
+	for (count = 0; count < 4; count ++)
+	{
+		batteryPower += ADC_RCVTab[4 * count];
+		batteryCharger += ADC_RCVTab[4 * count + 1];
+		infrared += ADC_RCVTab[4 * count + 2];
+	}
+	value.batteryPower = batteryPower / 4;
+	value.batteryCharger = batteryCharger / 4;
+	value.infrared = infrared / 4;
+	return value;
 }

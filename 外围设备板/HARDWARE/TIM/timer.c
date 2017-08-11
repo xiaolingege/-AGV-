@@ -5,7 +5,7 @@
 //PWM输出初始化
 //arr：自动重装值
 //psc：时钟预分频数
-void TIM4_PWM_Init(u32 arr, u32 psc)
+void tim4PwmInit(u32 arr, u32 psc)
 {
 	//此部分需手动修改IO口设置
 
@@ -160,7 +160,7 @@ void TIM5_IRQHandler(void)
 	}
 	TIM_ClearITPendingBit(TIM5, TIM_IT_CC1 | TIM_IT_Update); //清除中断标志位
 }
-void TIM3_Int_Init(u16 arr, u16 psc)
+void tim3IntInit(u16 arr, u16 psc)
 {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;

@@ -4,7 +4,7 @@
 	
 #define CAN_BAUD_NUM	18
 
-void CAN1_Configuration(void);
+void can1Config(void);
 
 void CAN2_Configuration(void);
 void CAN_Baud_Process(unsigned int Baud, CAN_InitTypeDef *CAN_InitStructure);

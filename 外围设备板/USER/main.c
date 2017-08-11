@@ -19,15 +19,14 @@ u8 SendBuff[SEND_BUF_SIZE] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 };
 xQueueHandle ConfigArgsQueue;
 int main(void)
 {
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);//设置系统中断优先级分组4
-	delay_init(168);		//初始化延时函数
-	uart_init(115200);     	//初始化串口
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+	delayInit(168);		
+	uartInit(115200);     	
 	batteryLevelLedInit();
-    CAN1_Configuration();
-	MYDMA_Config(DMA2_Stream7, DMA_Channel_4, (u32)&USART1->DR, (u32)SendBuff, SEND_BUF_SIZE);
-	TIM4_PWM_Init(5000 - 1, 84 - 1);       	//84M/84=1Mhz的计数频率计数到5000,PWM频率为1M/5000=200hz     
-    TIM3_Int_Init(84 - 1, 0); //TIM3以1MHZ产生中断
-	ADC_Configuration();
+    can1Config();
+	myDmaConfig(DMA2_Stream7, DMA_Channel_4, (u32)&USART1->DR, (u32)SendBuff, SEND_BUF_SIZE);
+	tim4PwmInit(5000 - 1, 84 - 1);
+	adcConfig();
 	//创建开始任务
 	xTaskCreate((TaskFunction_t)start_task,            //任务函数
 		(const char*)"start_task",          //任务名称
@@ -39,16 +38,17 @@ int main(void)
 }
 
 //开始任务任务函数
-void start_task(void *pvParameters)
+static void start_task(void *pvParameters)
 {
-	taskENTER_CRITICAL();           //进入临界区
-	//创建LED0任务
+	taskENTER_CRITICAL(); 
+
 	xTaskCreate((TaskFunction_t)indicatorManageTask,
 		(const char*)"IndicatorManageTask",
 		(uint16_t)_INDICATOR_MANAGE_TASK_STK,
 		(void*)NULL,
 		(UBaseType_t)_INDICATOR_MANAGE_TASK_PRIO,
 		(TaskHandle_t*)&IndicatorTaskHandle);
+
 #if _ENABLE_LIDAR
 	xTaskCreate((TaskFunction_t)lidarTask,
 		(const char*)"LidarTask",
@@ -58,20 +58,20 @@ void start_task(void *pvParameters)
 		(TaskHandle_t*)&LidarTaskHandle);
 #endif
 
-	//创建LED1任务
-	xTaskCreate((TaskFunction_t)led1_task,
-		(const char*)"led1_task",
-		(uint16_t)LED1_STK_SIZE,
+	xTaskCreate((TaskFunction_t)sensorCheckTask,
+		(const char*)"SensorCheck",
+		(uint16_t)SENSOR_CHECK_STK_SIZE,
 		(void*)NULL,
-		(UBaseType_t)LED1_TASK_PRIO,
-		(TaskHandle_t*)&LED1Task_Handler);
-	//浮点测试任务
-	xTaskCreate((TaskFunction_t)float_task,
-		(const char*)"float_task",
-		(uint16_t)FLOAT_STK_SIZE,
+		(UBaseType_t)SENSOR_CHECK_TASK_PRIO,
+		(TaskHandle_t*)&SensorCheckTaskHandler);
+
+	xTaskCreate((TaskFunction_t)communicateTask,
+		(const char*)"communicate_task",
+		(uint16_t)COMMUNICATE_STK_SIZE,
 		(void*)NULL,
-		(UBaseType_t)FLOAT_TASK_PRIO,
-		(TaskHandle_t*)&FLOATTask_Handler);
+		(UBaseType_t)COMMUNICATE_TASK_PRIO,
+		(TaskHandle_t*)&CommunicateTaskHandler);
+
 	vTaskDelete(StartTask_Handler); //删除开始任务
 	taskEXIT_CRITICAL();            //退出临界区
 }
@@ -88,32 +88,51 @@ void indicatorManageTask(void *pvParameters)
 	{
 		errStatusShow(Lost_3288);
 		batteryLevelShow(Full);
-		vTaskDelay(1000);
+		tapeLightShow(RED);
+		vTaskDelay(500);
 	}
 }
 
-//LED1任务函数
-void led1_task(void *pvParameters)
+//************************************
+// FunctionName:  sensorCheck
+// Returns:   void
+// Qualifier:计算电池电量，充电电量与红外传感器的数值
+// Parameter: void * pvParameters
+//************************************
+void sensorCheckTask(void *pvParameters)
 {
-	taskENTER_CRITICAL();
-	setFlipTimer(10);
-	taskEXIT_CRITICAL();
-	vTaskDelete(LED1Task_Handler);
-}
+	ADC_VALUE_STRUCT_TYPE checkValue;
 
-//浮点测试任务
-void float_task(void *pvParameters)
-{
-	static float float_num = 0.00;
 	while (1)
 	{
+		checkValue = checkADCBufs();
+		vTaskDelay(10);
+	}
+}
+
+//************************************
+// FunctionName:  communicateTask
+// Returns:   void
+// Qualifier:与主机通信功能，完成命令分析、反馈与执行
+// Parameter: void * pvParameters
+//************************************
+void communicateTask(void *pvParameters)
+{
+	while (1)
+	{
+		//与主机通信
 		changeStrobe(200, 150, 50);
         LED0 = !LED0;
-		float_num += 0.01f;
 		vTaskDelay(1000);
 	}
 }
 
+//************************************
+// FunctionName:  lidarTask
+// Returns:   void
+// Qualifier:避障激光数据读取
+// Parameter: void * pvParameters
+//************************************
 void lidarTask(void *pvParameters)
 {
 	USART_DMACmd(USART1, USART_DMAReq_Tx, ENABLE);

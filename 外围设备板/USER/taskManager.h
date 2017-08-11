@@ -12,7 +12,7 @@
 //任务句柄
 TaskHandle_t StartTask_Handler;
 //任务函数
-void start_task(void *pvParameters);
+static void start_task(void *pvParameters);
 
 //任务优先级
 #define _INDICATOR_MANAGE_TASK_PRIO		2
@@ -24,22 +24,22 @@ TaskHandle_t IndicatorTaskHandle;
 void indicatorManageTask(void *pvParameters);
 
 //任务优先级
-#define LED1_TASK_PRIO		3
+#define SENSOR_CHECK_TASK_PRIO		3
 //任务堆栈大小	
-#define LED1_STK_SIZE 		50  
+#define SENSOR_CHECK_STK_SIZE 		50  
 //任务句柄
-TaskHandle_t LED1Task_Handler;
+TaskHandle_t SensorCheckTaskHandler;
 //任务函数
-void led1_task(void *pvParameters);
+void sensorCheckTask(void *pvParameters);
 
 //任务优先级
-#define FLOAT_TASK_PRIO		4
+#define COMMUNICATE_TASK_PRIO		4
 //任务堆栈大小	
-#define FLOAT_STK_SIZE 		128
+#define COMMUNICATE_STK_SIZE 		128
 //任务句柄
-TaskHandle_t FLOATTask_Handler;
+TaskHandle_t CommunicateTaskHandler;
 //任务函数
-void float_task(void *pvParameters);
+void communicateTask(void *pvParameters);
 
 
 #define _LIDAR_TASK_PRIO	5

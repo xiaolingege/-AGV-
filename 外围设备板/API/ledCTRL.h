@@ -15,11 +15,17 @@
 #define POWER_75 PFout(3)
 #define POWER_100 PFout(4)
 
+#define TAPE_R PFout(10)
+#define TAPE_G PFout(11)
+#define TAPE_B PFout(12)
+
+
 #define ERR_LED_PUSH PFout(5)
 
 void errStatusShow(LED_SHOW_TYPE status);
 
 void batteryLevelShow(BATTERY_LEVEL_TYPE battery);
+void tapeLightShow(TAPE_LIGHT_TYPE status);
 #endif // !_LED_CTRL_H
 
 

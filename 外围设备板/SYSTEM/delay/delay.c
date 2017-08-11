@@ -41,7 +41,7 @@ void SysTick_Handler(void)
 //SYSTICK的时钟固定为AHB时钟，基础例程里面SYSTICK时钟频率为AHB/8
 //这里为了兼容FreeRTOS，所以将SYSTICK的时钟频率改为AHB的频率！
 //SYSCLK:系统时钟频率
-void delay_init(u8 SYSCLK)
+void delayInit(u8 SYSCLK)
 {
 	u32 reload;
  	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK); 
