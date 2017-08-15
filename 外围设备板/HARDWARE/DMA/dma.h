@@ -1,10 +1,12 @@
 #ifndef __DMA_H
 #define	__DMA_H	   
 #include "sys.h"
+#include "usart.h"
 
+extern volatile unsigned char RS232_dma_send_flag;
 
-void myDmaConfig(DMA_Stream_TypeDef *DMA_Streamx, u32 chx, u32 par, u32 mar, u16 ndtr);//配置DMAx_CHx
-void MYDMA_Enable(DMA_Stream_TypeDef *DMA_Streamx, u16 ndtr);	//使能一次DMA传输		   
+void RS232_DMA_Init(void);
+void DMA_RS232_Send_Configuration(unsigned char *send_buff,unsigned int send_size);	   
 #endif
 
 

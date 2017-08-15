@@ -1,128 +1,145 @@
-#include "sys.h"
-#include "usart.h"	
-////////////////////////////////////////////////////////////////////////////////// 	 
-//如果使用ucos,则包括下面的头文件即可.
-#if SYSTEM_SUPPORT_OS
-#include "FreeRTOS.h"					//FreeRTOS使用	  
-#endif
- 
 
-//////////////////////////////////////////////////////////////////
-//加入以下代码,支持printf函数,而不需要选择use MicroLIB	  
-#if 1
-#pragma import(__use_no_semihosting)             
-//标准库需要的支持函数                 
-struct __FILE 
+#include "usart.h"
+
+/***********************************************************************
+文件名称：SCI.C
+功    能：完成对usart1和usart2的操作
+编写时间：2012.11.22
+编 写 人：
+注    意：
+***********************************************************************/
+
+volatile unsigned char RS232_REC_Flag = 0;
+volatile unsigned char RS232_buff[RS232_REC_BUFF_SIZE];//用于接收数据
+volatile unsigned int RS232rec_counter = 0;//用于RS232接收计数
+
+unsigned short RS232_send_data_length = 0;
+
+/***********************************************************************
+函数名称：void USART_232_Configuration(void) 
+功    能：
+输入参数：
+输出参数：
+编写时间：
+编 写 人：
+注    意：RS232用的是USART1
+***********************************************************************/
+void USART_232_Configuration(void)
 { 
-	int handle; 
-}; 
+    NVIC_InitTypeDef   NVIC_InitStructure;
+	GPIO_InitTypeDef GPIO_InitStructure;//定义GPIO_InitTypeDef类型的结构体成员GPIO_InitStructure
 
-FILE __stdout;       
-//定义_sys_exit()以避免使用半主机模式    
-void _sys_exit(int x) 
-{ 
-	x = x; 
-} 
-//重定义fputc函数 
-int fputc(int ch, FILE *f)
-{ 	
-	while((USART1->SR&0X40)==0);//循环发送,直到发送完毕   
-	USART1->DR = (u8) ch;      
-	return ch;
-}
-#endif
- 
-#if EN_USART1_RX   //如果使能了接收
-//串口1中断服务程序
-//注意,读取USARTx->SR能避免莫名其妙的错误   	
-u8 USART_RX_BUF[USART_REC_LEN];     //接收缓冲,最大USART_REC_LEN个字节.
-//接收状态
-//bit15，	接收完成标志
-//bit14，	接收到0x0d
-//bit13~0，	接收到的有效字节数目
-u16 USART_RX_STA=0;       //接收状态标记	
-
-//初始化IO 串口1 
-//bound:波特率
-void uartInit(u32 bound){
-	//GPIO端口设置
-	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
+	USART_ClockInitTypeDef USART_ClockInitStruct;
+	//使能需要用到的GPIO管脚时钟
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOD, ENABLE);
+	//使能USART1 时钟
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+	///复位串口1
+	USART_DeInit(USART1);
 	
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,ENABLE); //使能GPIOA时钟
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1,ENABLE);//使能USART1时钟
- 
-	//串口1对应引脚复用映射
-	GPIO_PinAFConfig(GPIOA,GPIO_PinSource9,GPIO_AF_USART1); //GPIOA9复用为USART1
-	GPIO_PinAFConfig(GPIOA,GPIO_PinSource10,GPIO_AF_USART1); //GPIOA10复用为USART1
+	USART_StructInit(&USART_InitStructure);//载入默认USART参数
+	USART_ClockStructInit(&USART_ClockInitStruct);//载入默认USART参数        
+	//配置串口1的管脚 PA8 USART1_EN PA9 USART1_TX PA10 USART1_RX    
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;    //复用
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽输出
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9; 
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+	GPIO_PinAFConfig(GPIOA,GPIO_PinSource9,GPIO_AF_USART1);        //管脚PA9复用为USART1
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;        
+	GPIO_Init(GPIOA, &GPIO_InitStructure);                                                                                                                 
+	GPIO_PinAFConfig(GPIOA,GPIO_PinSource10,GPIO_AF_USART1);
 	
-	//USART1端口配置
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10; //GPIOA9与GPIOA10
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;//复用功能
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	//速度50MHz
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //推挽复用输出
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP; //上拉
-	GPIO_Init(GPIOA,&GPIO_InitStructure); //初始化PA9，PA10
+	USART_ClockInit(USART1,&USART_ClockInitStruct);
 
-   //USART1 初始化设置
-	USART_InitStructure.USART_BaudRate = bound;//波特率设置
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;//字长为8位数据格式
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;//一个停止位
-	USART_InitStructure.USART_Parity = USART_Parity_No;//无奇偶校验位
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;//无硬件数据流控制
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;	//收发模式
-	USART_Init(USART1, &USART_InitStructure); //初始化串口1
-	
-	USART_Cmd(USART1, ENABLE);  //使能串口1 
-	
-	//USART_ClearFlag(USART1, USART_FLAG_TC);
-	
-#if EN_USART1_RX	
-	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);//开启相关中断
 
-	//Usart1 NVIC 配置
-	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;//串口1中断通道
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=3;//抢占优先级3
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority =3;		//子优先级3
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
-	NVIC_Init(&NVIC_InitStructure);	//根据指定的参数初始化VIC寄存器、
-
-#endif
+	USART_InitStructure.USART_BaudRate = 115200;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	USART_Init(USART1,&USART_InitStructure); 
 	
+	USART_ITConfig(USART1,USART_IT_RXNE,DISABLE);  
+	USART_ITConfig(USART1,USART_IT_IDLE,ENABLE);
+// 	USART_ITConfig(USART1, USART_IT_TC, ENABLE);// 
+	
+// 	//采用DMA方式发送  
+	USART_DMACmd(USART1,USART_DMAReq_Tx,ENABLE);  
+	//采用DMA方式接收  
+	USART_DMACmd(USART1,USART_DMAReq_Rx,ENABLE); 
+	
+	
+	USART_Cmd(USART1, ENABLE); 
+	USART_ClearITPendingBit(USART1, USART_IT_TC);//清除中断TC位	
+    
+    NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream7_IRQn;  
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;  
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;  
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;  
+	NVIC_Init(&NVIC_InitStructure); 
+
 }
 
-
-void USART1_IRQHandler(void)                	//串口1中断服务程序
+/***********************************************************************
+函数名称：void USART1_IRQHandler(void) 
+功    能：完成SCI的数据的接收，并做标识
+输入参数：
+输出参数：
+编写时间：2012.11.22
+编 写 人：
+注    意：RS232用的是USART1
+***********************************************************************/
+void USART1_IRQHandler(void)  
 {
-	u8 Res;
-	if(USART_GetITStatus(USART1, USART_IT_RXNE) != RESET)  //接收中断(接收到的数据必须是0x0d 0x0a结尾)
-	{
-		Res =USART_ReceiveData(USART1);//(USART1->DR);	//读取接收到的数据
+
+	unsigned char temp = 0;
+	if(USART_GetITStatus(USART1, USART_IT_IDLE) != RESET)//串口空闲中断判断接收完成标志
+	{	
+		temp = USART1->SR;  
+		temp = USART1->DR; 												//清USART_IT_IDLE标志 
+		RS232_REC_Flag = 1;	   											//DMA接收标志
+
+		DMA_Cmd(DMA2_Stream5, DISABLE); 							  	//读取数据长度先关闭DMA 
+		RS232_send_data_length = RS232_REC_BUFF_SIZE - DMA_GetCurrDataCounter(DMA2_Stream5);//获取DMA接收的数据长度，
 		
-		if((USART_RX_STA&0x8000)==0)//接收未完成
+		DMA_SetCurrDataCounter(DMA2_Stream5,RS232_REC_BUFF_SIZE);		//设置传输数据长度    
+		DMA_Cmd(DMA2_Stream5, ENABLE);
+	}
+// 	if(USART_GetITStatus(USART1, USART_IT_TC) != RESET)					//串口发送中断
+// 	{
+// 		USART_ClearITPendingBit(USART1, USART_IT_TC);
+// 		RS232_dma_send_flag = 0;										//允许再次发送
+// 	}	
+}
+
+/***********************************************************************
+函数名称：RS232_DMA_Send(unsigned char *send_buff,unsigned int length)
+功    能：RS232  DMA方式发送字符串
+输入参数：send_buff:待发送的数据指针；length：发送的数据长度（字符个数）
+输出参数：
+编写时间：2012.11.22
+编 写 人：
+注    意：
+***********************************************************************/
+void RS232_DMA_Send(unsigned char *send_buff,unsigned int length)
+{
+	
+	unsigned int counter_232 = 0;
+	while(RS232_dma_send_flag != 0)					//等待上次的DMA传输完成
+	{
+		counter_232 ++;
+		if(counter_232 >= 0xffff)
 		{
-			if(USART_RX_STA&0x4000)//接收到了0x0d
-			{
-				if(Res!=0x0a)USART_RX_STA=0;//接收错误,重新开始
-				else USART_RX_STA|=0x8000;	//接收完成了 
-			}
-			else //还没收到0X0D
-			{	
-				if(Res==0x0d)USART_RX_STA|=0x4000;
-				else
-				{
-					USART_RX_BUF[USART_RX_STA&0X3FFF]=Res ;
-					USART_RX_STA++;
-					if(USART_RX_STA>(USART_REC_LEN-1))USART_RX_STA=0;//接收数据错误,重新开始接收	  
-				}		 
-			}
-		}   		 
-	} 
-} 
-#endif	
-
- 
-
-
+			break;
+		}
+	}						 
+	RS232_dma_send_flag = 1;
+	DMA2_Stream7 -> M0AR = (u32)send_buff;
+	DMA_SetCurrDataCounter(DMA2_Stream7,length);  	//设置传输长度
+	DMA_Cmd(DMA2_Stream7,ENABLE);					//启动DMA传输
+}
 

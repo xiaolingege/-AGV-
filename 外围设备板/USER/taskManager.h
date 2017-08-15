@@ -17,7 +17,7 @@ static void start_task(void *pvParameters);
 //任务优先级
 #define _INDICATOR_MANAGE_TASK_PRIO		2
 //任务堆栈大小	
-#define _INDICATOR_MANAGE_TASK_STK 		50  
+#define _INDICATOR_MANAGE_TASK_STK 		128 
 //任务句柄
 TaskHandle_t IndicatorTaskHandle;
 //任务函数
@@ -26,7 +26,7 @@ void indicatorManageTask(void *pvParameters);
 //任务优先级
 #define SENSOR_CHECK_TASK_PRIO		3
 //任务堆栈大小	
-#define SENSOR_CHECK_STK_SIZE 		50  
+#define SENSOR_CHECK_STK_SIZE 		128
 //任务句柄
 TaskHandle_t SensorCheckTaskHandler;
 //任务函数

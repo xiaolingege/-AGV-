@@ -15,7 +15,8 @@
 //All rights reserved									  
 ////////////////////////////////////////////////////////////////////////////////// 	
 void batteryLevelLedInit(void);
+void GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 //LED¶Ë¿Ú¶¨Òå
 #define LED0 PFout(9)	// DS0
-#define LED1 PFout(10)	// DS1	 
+//#define LED1 PFout(10)	// DS1	 
 #endif

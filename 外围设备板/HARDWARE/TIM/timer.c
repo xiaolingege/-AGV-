@@ -199,7 +199,7 @@ void TIM3_IRQHandler(void)
 	{
 		if (!countTimer3)
 		{
-			LED1 = !LED1;//DS1·­×ª
+//			LED1 = !LED1;//DS1·­×ª
 			countTimer3 = FlipArgs.FlipCount;
 		}
 		else

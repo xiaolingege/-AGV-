@@ -1,88 +1,105 @@
-#include "dma.h"																	   	  
-//DMAx的各通道配置
-//这里的传输形式是固定的,这点要根据不同的情况来修改
-//从存储器->外设模式/8位数据宽度/存储器增量模式
-//DMA_Streamx:DMA数据流,DMA1_Stream0~7/DMA2_Stream0~7
-//chx:DMA通道选择,@ref DMA_channel DMA_Channel_0~DMA_Channel_7
-//par:外设地址
-//mar:存储器地址
-//ndtr:数据传输量  
-void myDmaConfig(DMA_Stream_TypeDef *DMA_Streamx, u32 chx, u32 par, u32 mar, u16 ndtr)
+/***********************************************************************
+文件名称：DMA.C
+功    能：
+编写时间：
+编 写 人：
+注    意：
+***********************************************************************/
+#include "dma.h"
+
+unsigned char RS232_send_data[RS232_REC_BUFF_SIZE];
+volatile unsigned char RS232_dma_send_flag = 0;
+
+
+/***********************************************************************
+函数名称：void RS232_DMA_Init(void) 
+功    能：
+输入参数：
+输出参数：
+编写时间：2012.11.22
+编 写 人：
+注    意：RS232用的是串口1 对应的DMA通道是DMA2_Channel4
+***********************************************************************/
+void RS232_DMA_Init(void)
 {
+	
+    	NVIC_InitTypeDef   NVIC_InitStructure;
 
-	DMA_InitTypeDef  DMA_InitStructure;
+	DMA_InitTypeDef DMA_InitStructure;
+	//启动DMA时钟  
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);  
 
-	if ((u32)DMA_Streamx > (u32)DMA2)//得到当前stream是属于DMA2还是DMA1
-	{
-		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);//DMA2时钟使能 
+    DMA_DeInit(DMA2_Stream5);					//接收管道
+    DMA_InitStructure.DMA_Channel            = DMA_Channel_4;
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&USART1->DR);  
+    DMA_InitStructure.DMA_Memory0BaseAddr    = (uint32_t)(&RS232_buff);
+    DMA_InitStructure.DMA_DIR                = DMA_DIR_PeripheralToMemory;
+    DMA_InitStructure.DMA_BufferSize         = RS232_REC_BUFF_SIZE;
+    DMA_InitStructure.DMA_PeripheralInc      = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc          = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    DMA_InitStructure.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.DMA_Mode               = DMA_Mode_Circular;
+    DMA_InitStructure.DMA_Priority           = DMA_Priority_VeryHigh;
+    DMA_InitStructure.DMA_FIFOMode           = DMA_FIFOMode_Disable;
+    DMA_InitStructure.DMA_FIFOThreshold      = DMA_FIFOThreshold_1QuarterFull ;
+    DMA_InitStructure.DMA_MemoryBurst        = DMA_MemoryBurst_Single;
+    DMA_InitStructure.DMA_PeripheralBurst    = DMA_PeripheralBurst_Single;
+    DMA_Init(DMA2_Stream5, &DMA_InitStructure);                      
+    NVIC_EnableIRQ(DMA_Channel_4);     
+    DMA_Cmd(DMA2_Stream5, ENABLE);  
 
-	}
-	else
-	{
-		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);//DMA1时钟使能 
-	}
-	DMA_DeInit(DMA_Streamx);
-
-	while (DMA_GetCmdStatus(DMA_Streamx) != DISABLE) {}//等待DMA可配置 
-
-													   /* 配置 DMA Stream */
-	DMA_InitStructure.DMA_Channel = chx;  //通道选择
-	DMA_InitStructure.DMA_PeripheralBaseAddr = par;//DMA外设地址
-	DMA_InitStructure.DMA_Memory0BaseAddr = mar;//DMA 存储器0地址
-	DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;//存储器到外设模式
-	DMA_InitStructure.DMA_BufferSize = ndtr;//数据传输量 
-	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;//外设非增量模式
-	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;//存储器增量模式
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;//外设数据长度:8位
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;//存储器数据长度:8位
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;// 使用普通模式 
-	DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;//中等优先级
-	DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
-	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
-	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;//存储器突发单次传输
-	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;//外设突发单次传输
-	DMA_Init(DMA_Streamx, &DMA_InitStructure);//初始化DMA Stream
-
+    DMA_DeInit(DMA2_Stream7);
+    DMA_InitStructure.DMA_Channel            = DMA_Channel_4;//发送管道
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)(&USART1->DR);  
+    DMA_InitStructure.DMA_Memory0BaseAddr    = (uint32_t)(&RS232_send_data);
+    DMA_InitStructure.DMA_DIR                = DMA_DIR_MemoryToPeripheral;
+    DMA_InitStructure.DMA_BufferSize         = RS232_REC_BUFF_SIZE;
+    DMA_InitStructure.DMA_PeripheralInc      = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc          = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    DMA_InitStructure.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.DMA_Mode               = DMA_Mode_Normal;
+    DMA_InitStructure.DMA_Priority           = DMA_Priority_VeryHigh;
+    DMA_InitStructure.DMA_FIFOMode           = DMA_FIFOMode_Disable;
+    DMA_InitStructure.DMA_FIFOThreshold      = DMA_FIFOThreshold_1QuarterFull ;
+    DMA_InitStructure.DMA_MemoryBurst        = DMA_MemoryBurst_Single;
+    DMA_InitStructure.DMA_PeripheralBurst    = DMA_PeripheralBurst_Single;
+    DMA_Init(DMA2_Stream7, &DMA_InitStructure);  
+    DMA_ITConfig(DMA2_Stream7, DMA_IT_TC , ENABLE);	  
+    DMA_Cmd(DMA2_Stream7, DISABLE);  
+    
+    
+	
+	/* Set the Vector Table base location at 0x08000000 */
+	
+	/* 2 bit for pre-emption priority, 2 bits for subpriority */
+											
+	NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;	  
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;	
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+// 	
+	//DMA发送中断设置  
+	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Stream7_IRQn;  
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;  
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;  
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;  
+	NVIC_Init(&NVIC_InitStructure); 
 
 }
-//开启一次DMA传输
-//DMA_Streamx:DMA数据流,DMA1_Stream0~7/DMA2_Stream0~7 
-//ndtr:数据传输量  
-void MYDMA_Enable(DMA_Stream_TypeDef *DMA_Streamx, u16 ndtr)
+
+//串口1 DMA方式发送中断  
+
+void DMA2_Stream7_IRQHandler(void)
 {
-
-	DMA_Cmd(DMA_Streamx, DISABLE);                      //关闭DMA传输 
-
-	while (DMA_GetCmdStatus(DMA_Streamx) != DISABLE) {}	//确保DMA可以被设置  
-
-	DMA_SetCurrDataCounter(DMA_Streamx, ndtr);          //数据传输量  
-
-	DMA_Cmd(DMA_Streamx, ENABLE);                      //开启DMA传输 
+	if(DMA_GetITStatus(DMA2_Stream7, DMA_IT_TCIF7))
+	{
+		/* Clear DMA Stream Transfer Complete interrupt pending bit */
+		DMA_ClearITPendingBit(DMA2_Stream7, DMA_IT_TCIF7);
+		RS232_dma_send_flag = 0;										//允许再次发送
+		DMA_Cmd(DMA2_Stream7, DISABLE); 
+	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

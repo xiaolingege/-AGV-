@@ -11,7 +11,7 @@
 #include "adc.h"
 #include "taskManager.h"
 
-#define _ENABLE_LIDAR 0
+#define _ENABLE_LIDAR 0//在启用区域激光避障雷达的时候使能，会启用该任务
 
 #define SEND_BUF_SIZE 10
 u8 SendBuff[SEND_BUF_SIZE] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0 };
@@ -21,10 +21,10 @@ int main(void)
 {
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 	delayInit(168);		
-	uartInit(115200);     	
 	batteryLevelLedInit();
+    USART_232_Configuration();
+	RS232_DMA_Init();
     can1Config();
-	myDmaConfig(DMA2_Stream7, DMA_Channel_4, (u32)&USART1->DR, (u32)SendBuff, SEND_BUF_SIZE);
 	tim4PwmInit(5000 - 1, 84 - 1);
 	adcConfig();
 	//创建开始任务
@@ -84,12 +84,18 @@ static void start_task(void *pvParameters)
 //************************************
 void indicatorManageTask(void *pvParameters)
 {
+    static portTickType xLaskWakeTime;
+    const portTickType xFrequecy = pdMS_TO_TICKS(500);
+
 	while (1)
 	{
+        xLaskWakeTime = xTaskGetTickCount();
+        GPIO_ToggleBits(GPIOF,GPIO_Pin_10); 
 		errStatusShow(Lost_3288);
 		batteryLevelShow(Full);
 		tapeLightShow(RED);
-		vTaskDelay(500);
+       // vTaskDelayUntil(&xLaskWakeTime, 500);
+		vTaskDelay(200);
 	}
 }
 
@@ -101,12 +107,14 @@ void indicatorManageTask(void *pvParameters)
 //************************************
 void sensorCheckTask(void *pvParameters)
 {
+    u8 sendbuf[] = "hello world!\r\n";
 	ADC_VALUE_STRUCT_TYPE checkValue;
 
 	while (1)
 	{
+        RS232_DMA_Send(sendbuf, 14);
 		checkValue = checkADCBufs();
-		vTaskDelay(10);
+		vTaskDelay(100);
 	}
 }
 
@@ -139,12 +147,6 @@ void lidarTask(void *pvParameters)
 
 	while (1)
 	{
-		MYDMA_Enable(DMA2_Stream7, SEND_BUF_SIZE);
-		while (DMA_GetFlagStatus(DMA2_Stream7, DMA_FLAG_TCIF7) == RESET)
-		{
-			vTaskDelay(2);
-		}//等待DMA2_Steam7传输完成
-		DMA_ClearFlag(DMA2_Stream7, DMA_FLAG_TCIF7);//清除DMA2_Steam7传输完成标志
 		vTaskDelay(100);
 	}
 }
